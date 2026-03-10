@@ -1,0 +1,74 @@
+kind: channel
+version: 1
+id: msteams
+name: MS Teams
+
+capabilities:
+  threads: true
+  files: false
+  reactions: false
+  edits: false
+  max_message_length: 28000
+
+required_env:
+  - MSTEAMS_APP_ID
+  - MSTEAMS_APP_PASSWORD
+
+init:
+  - name: fetch_token
+    method: POST
+    url: "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token"
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+    body: "grant_type=client_credentials&client_id={{env.MSTEAMS_APP_ID}}&client_secret={{env.MSTEAMS_APP_PASSWORD}}&scope=https%3A%2F%2Fapi.botframework.com%2F.default"
+    store:
+      access_token: access_token
+
+inbound:
+  http_webhook:
+    path: /api/messages
+    port: 3978
+    validate_jwt: true
+    oidc_endpoint: "https://login.botframework.com/v1/.well-known/openidconfiguration"
+    audience: "{{env.MSTEAMS_APP_ID}}"
+    issuer: "https://login.botframework.com"
+  event_types:
+    - message
+  skip:
+    - field: from.role
+      equals: bot
+  mapping:
+    conversation_id:
+      field: conversation.id
+    sender_id:
+      field: from.id
+    content:
+      field: text
+    thread_id:
+      field: replyToId
+      fallback: id
+    metadata:
+      service_url: serviceUrl
+      activity_id: id
+      tenant_id: channelData.tenant.id
+  transforms:
+    - type: replace
+      pattern: "<at>[^<]*</at>\\s*"
+      replacement: ""
+      regex: true
+    - type: trim
+  dedup:
+    key: "{{event.id}}"
+    ttl: 5m
+
+outbound:
+  chunking:
+    max_length: 28000
+  send:
+    method: POST
+    url: "{{msg.metadata.service_url}}v3/conversations/{{msg.conversation_id}}/activities"
+    headers:
+      Authorization: "Bearer {{self.access_token}}"
+      Content-Type: "application/json"
+    body: |
+      {"type":"message","text":"{{msg.content}}","replyToId":"{{msg.thread_id}}"}
