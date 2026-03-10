@@ -86,7 +86,7 @@ Teams user sees reply
 | Feature | Supported |
 |---|---|
 | Threads | Yes |
-| Files | No |
+| Files | Yes |
 | Reactions | No |
 | Edits | No |
 | Max message length | 28,000 chars |
