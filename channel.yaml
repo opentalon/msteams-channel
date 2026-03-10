@@ -5,7 +5,7 @@ name: MS Teams
 
 capabilities:
   threads: true
-  files: false
+  files: true
   reactions: false
   edits: false
   max_message_length: 28000
@@ -44,6 +44,15 @@ inbound:
       field: from.id
     content:
       field: text
+    files:
+      field: attachments
+      filter:
+        field: contentType
+        equals: "application/vnd.microsoft.teams.file.download.info"
+      map:
+        name: name
+        url: content.downloadUrl
+        file_type: content.fileType
     thread_id:
       field: replyToId
       fallback: id
